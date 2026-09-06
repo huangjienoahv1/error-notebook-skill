@@ -36,7 +36,7 @@ const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 /** 解析校验命令行参数。 */
 function parseArguments(argumentsList) {
-  let notebook = activeNotebookPath();
+  let notebook;
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
     if (argument !== "--notebook") {
@@ -48,6 +48,7 @@ function parseArguments(argumentsList) {
     }
     notebook = path.resolve(argumentsList[index]);
   }
+  notebook ??= activeNotebookPath();
   return { notebook };
 }
 

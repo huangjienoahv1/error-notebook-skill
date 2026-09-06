@@ -12,7 +12,7 @@ import { activeNotebookPath } from "./notebook-paths.mjs";
 /** 解析检索参数。 */
 function parseArguments(argumentsList) {
   const terms = [];
-  let notebook = activeNotebookPath();
+  let notebook;
   let maxResults = 8;
 
   for (let index = 0; index < argumentsList.length; index += 1) {
@@ -42,6 +42,7 @@ function parseArguments(argumentsList) {
   if (!Number.isInteger(maxResults) || maxResults < 1) {
     throw new Error("--max-results 必须是大于 0 的整数。");
   }
+  notebook ??= activeNotebookPath();
   return { terms, notebook, maxResults };
 }
 

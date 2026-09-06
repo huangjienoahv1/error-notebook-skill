@@ -22,9 +22,19 @@ error-notebook/
    └─ validate-notebook.mjs
 ```
 
-运行脚本需要 Node.js 18 或更高版本，不依赖 Python、PowerShell 或第三方 npm 包。
+Skill 自身运行需要 Node.js 18 或更高版本，不依赖 Python、PowerShell 或第三方 npm 包。普通用户通过 `npx skills` 安装时建议使用 Node.js 24 或更高版本，以满足当前 Skills CLI 的运行要求。
 
-## 安装到 Codex
+## 普通用户安装
+
+Node.js 24 或更高版本环境中，一条命令全局安装到 Codex：
+
+```shell
+npx skills add huangjienoahv1/error-notebook-skill --skill error-notebook --agent codex --global --yes
+```
+
+当前 Skills CLI 会把Skill安装到 `~/.agents/skills/error-notebook`。安装后重新打开 Codex；第一次检索、校验或复核时，会自动在 `~/.codex/error-notebook-data/error-notebook.md` 创建私有错题本。公开仓库中的模板始终保持为空，已有私有文件绝不会被覆盖。
+
+## 开发者链接安装
 
 把仓库克隆到不会被临时清理的稳定目录：
 
@@ -33,13 +43,15 @@ git clone https://github.com/huangjienoahv1/error-notebook-skill.git
 cd error-notebook-skill
 ```
 
-使用统一的 Node.js 安装器，让全局 Skill 使用仓库中的代码，同时在仓库外初始化私有错题本：
+使用统一的 Node.js 安装器，让全局 Skill 通过目录链接使用仓库中的代码，同时在仓库外初始化私有错题本：
 
 ```shell
 node ./error-notebook/scripts/install-skill.mjs
 ```
 
 安装器在 Windows 创建 Junction，在 Linux 和 macOS 创建目录符号链接。如果全局目录已经存在，脚本会先把它移动到 `~/.codex/skill-backups` 下的时间戳备份，再创建并验证目录链接；创建失败时会尝试恢复原目录，不会直接删除既有内容。私有错题本已存在时不会覆盖。
+
+开发者更新仓库后，目录链接会立即使用新代码；普通用户可以运行 `npx skills update -g error-notebook` 更新已安装副本。
 
 安装后：
 
@@ -73,7 +85,7 @@ node ./error-notebook/scripts/review-notebook.mjs
 node ./error-notebook/scripts/validate-public-repo.mjs
 ```
 
-检索、错题校验和复核脚本默认优先使用私有数据文件。检索结果如果命中待复核、已到期、已失效或已替代条目，会明确提示只能作为调查线索。公开仓库校验要求随仓库提供的模板不含任何真实条目，并扫描已跟踪文件中的高风险凭据、个人绝对路径和内网地址。
+检索、错题校验和复核脚本默认使用私有数据文件；文件尚不存在时会从公开空白模板安全初始化。检索结果如果命中待复核、已到期、已失效或已替代条目，会明确提示只能作为调查线索。公开仓库校验要求随仓库提供的模板不含任何真实条目，并扫描已跟踪文件中的高风险凭据、个人绝对路径和内网地址。
 
 复核扫描脚本只报告待复核和已经超过复核日期的条目，不会自动修改或删除内容。建议每月运行一次：
 

@@ -7,7 +7,7 @@ description: Search, revalidate, and maintain a lifecycle-managed cross-project 
 
 用这份 Skill 复用已经验证的失败经验，避免同类问题反复试错。公开仓库只提供 [空白模板](references/error-notebook.md)；个人错题默认保存在 `~/.codex/error-notebook-data/error-notebook.md`，也可以通过 `CODEX_ERROR_NOTEBOOK_PATH` 指定其他私有路径。
 
-运行脚本需要 Node.js 18 或更高版本，不依赖 Python、PowerShell 或第三方 npm 包。推荐运行 `node scripts/install-skill.mjs` 安装目录链接并初始化私有错题本；只需初始化数据文件时运行 `node scripts/init-private-notebook.mjs`。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。检索、校验和复核脚本会优先使用私有文件；尚未初始化时才读取公开模板。
+运行脚本需要 Node.js 18 或更高版本，不依赖 Python、PowerShell 或第三方 npm 包。通过通用 Skills CLI 安装后，首次检索、校验或复核会在仓库外自动初始化私有错题本；开发者也可以运行 `node scripts/install-skill.mjs` 安装指向源码仓库的目录链接。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。
 
 ## 开始任务时检索
 

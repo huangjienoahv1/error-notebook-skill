@@ -16,7 +16,7 @@ import { activeNotebookPath } from "./notebook-paths.mjs";
 
 /** 解析复核扫描参数。 */
 function parseArguments(argumentsList) {
-  let notebook = activeNotebookPath();
+  let notebook;
   let asOf = todayDate();
   let maxResults = 20;
   let failOnAction = false;
@@ -54,6 +54,7 @@ function parseArguments(argumentsList) {
   if (!Number.isInteger(maxResults) || maxResults < 1) {
     throw new Error("--max-results 必须是大于 0 的整数。");
   }
+  notebook ??= activeNotebookPath();
   return { notebook, asOf, maxResults, failOnAction };
 }
 

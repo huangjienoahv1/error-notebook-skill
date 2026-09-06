@@ -42,14 +42,39 @@ export function privateNotebookPath(environment = process.env) {
     : defaultPrivateNotebook;
 }
 
-/** 优先返回私有错题本；尚未初始化时返回公开空白模板。 */
-export function activeNotebookPath(environment = process.env) {
+/** 确保私有错题本存在；只在目标不存在时复制公开空白模板。 */
+export function initializePrivateNotebook(environment = process.env) {
   const privatePath = privateNotebookPath(environment);
-  if (
-    fs.existsSync(privatePath)
-    || environment[notebookPathEnvironmentVariable]
-  ) {
-    return privatePath;
+  if (fs.existsSync(privatePath)) {
+    if (!fs.statSync(privatePath).isFile()) {
+      throw new Error(`私有错题本路径不是文件：${privatePath}`);
+    }
+    return { path: privatePath, created: false };
   }
-  return bundledNotebook;
+  if (!fs.existsSync(bundledNotebook) || !fs.statSync(bundledNotebook).isFile()) {
+    throw new Error(`公开模板不存在：${bundledNotebook}`);
+  }
+
+  fs.mkdirSync(path.dirname(privatePath), { recursive: true });
+  try {
+    fs.copyFileSync(
+      bundledNotebook,
+      privatePath,
+      fs.constants.COPYFILE_EXCL,
+    );
+    return { path: privatePath, created: true };
+  } catch (error) {
+    if (error.code !== "EEXIST") {
+      throw error;
+    }
+  }
+  if (!fs.statSync(privatePath).isFile()) {
+    throw new Error(`私有错题本路径不是文件：${privatePath}`);
+  }
+  return { path: privatePath, created: false };
+}
+
+/** 返回私有错题本路径，首次默认运行时自动完成安全初始化。 */
+export function activeNotebookPath(environment = process.env) {
+  return initializePrivateNotebook(environment).path;
 }
