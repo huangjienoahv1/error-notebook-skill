@@ -1,4 +1,3 @@
 node_modules/
 __pycache__/
-*.py[cod]
 error-notebook/references/error-notebook.local.md

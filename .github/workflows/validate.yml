@@ -9,7 +9,13 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,3 +29,15 @@ jobs:
           --notebook error-notebook/references/error-notebook.md
       - name: Check public repository privacy boundary
         run: node error-notebook/scripts/validate-public-repo.mjs
+      - name: Verify cross-platform installer
+        run: >-
+          node error-notebook/scripts/install-skill.mjs
+          --install-path "${{ runner.temp }}/codex/skills/error-notebook"
+          --backup-root "${{ runner.temp }}/codex/skill-backups"
+          --private-notebook "${{ runner.temp }}/codex/error-notebook-data/error-notebook.md"
+      - name: Verify installer idempotency
+        run: >-
+          node error-notebook/scripts/install-skill.mjs
+          --install-path "${{ runner.temp }}/codex/skills/error-notebook"
+          --backup-root "${{ runner.temp }}/codex/skill-backups"
+          --private-notebook "${{ runner.temp }}/codex/error-notebook-data/error-notebook.md"

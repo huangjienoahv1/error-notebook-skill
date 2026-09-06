@@ -7,7 +7,7 @@ description: Search, revalidate, and maintain a lifecycle-managed cross-project 
 
 用这份 Skill 复用已经验证的失败经验，避免同类问题反复试错。公开仓库只提供 [空白模板](references/error-notebook.md)；个人错题默认保存在 `~/.codex/error-notebook-data/error-notebook.md`，也可以通过 `CODEX_ERROR_NOTEBOOK_PATH` 指定其他私有路径。
 
-运行脚本需要 Node.js 18 或更高版本，不需要安装第三方 npm 依赖。首次安装时运行 `node scripts/init-private-notebook.mjs`。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。检索、校验和复核脚本会优先使用私有文件；尚未初始化时才读取公开模板。
+运行脚本需要 Node.js 18 或更高版本，不依赖 Python、PowerShell 或第三方 npm 包。推荐运行 `node scripts/install-skill.mjs` 安装目录链接并初始化私有错题本；只需初始化数据文件时运行 `node scripts/init-private-notebook.mjs`。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。检索、校验和复核脚本会优先使用私有文件；尚未初始化时才读取公开模板。
 
 ## 开始任务时检索
 
@@ -94,13 +94,13 @@ node scripts/review-notebook.mjs
 
 ## 私有数据与公开代码
 
-可以把全局 Skill 安装路径通过 Windows Junction 指向 Git 仓库中的 `error-notebook` 目录；安装或修复链接时运行 `scripts/install_windows_junction.ps1`。Junction 只共享 Skill 代码，真实错题仍位于仓库之外的私有数据路径。
+可以把全局 Skill 安装路径指向 Git 仓库中的 `error-notebook` 目录；安装或修复链接时运行 `node scripts/install-skill.mjs`。安装器在 Windows 创建 Junction，在 Linux 和 macOS 创建目录符号链接。目录链接只共享 Skill 代码，真实错题仍位于仓库之外的私有数据路径。
 
 - 更新个人错题后，验证私有文件已经保存，但不要把它复制、暂存或推送到公开仓库。
 - Git 仓库只提交 `SKILL.md`、脚本、公开空白模板和不含个人数据的说明。
 - 提交前运行 `node scripts/validate-public-repo.mjs`，确认公开模板仍为空且已跟踪文件未出现高风险凭据或个人绝对路径。
 - 只有用户明确要求提交或推送时，才执行对应 Git 操作；私有错题更新与 GitHub 同步相互独立。
-- Junction 安装脚本生成的时间戳备份仅用于迁移回滚，不是后续维护入口。
+- 跨平台安装器生成的时间戳备份仅用于迁移回滚，不是后续维护入口。
 
 ## 输出边界
 

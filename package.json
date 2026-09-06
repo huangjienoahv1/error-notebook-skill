@@ -8,6 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "install:skill": "node ./error-notebook/scripts/install-skill.mjs",
     "init:notebook": "node ./error-notebook/scripts/init-private-notebook.mjs",
     "search": "node ./error-notebook/scripts/search-notebook.mjs",
     "validate:notebook": "node ./error-notebook/scripts/validate-notebook.mjs",
