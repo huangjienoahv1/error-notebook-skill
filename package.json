@@ -2,7 +2,7 @@
   "name": "error-notebook-skill",
   "version": "1.0.0",
   "private": true,
-  "description": "Lifecycle-managed Codex error notebook skill with private local data separation",
+  "description": "Lifecycle-managed agent error notebook skill with private local data separation",
   "type": "module",
   "engines": {
     "node": ">=18"

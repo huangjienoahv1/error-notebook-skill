@@ -31,21 +31,21 @@ jobs:
         run: node error-notebook/scripts/validate-public-repo.mjs
       - name: Verify Skills CLI installation and first-run initialization
         env:
-          CODEX_ERROR_NOTEBOOK_PATH: ${{ runner.temp }}/npx-data/error-notebook.md
+          ERROR_NOTEBOOK_PATH: ${{ runner.temp }}/npx-data/error-notebook.md
           DISABLE_TELEMETRY: "1"
         run: |
-          npx --yes skills add "${{ github.workspace }}" --skill error-notebook --agent codex --global --yes --copy
+          npx --yes skills add "${{ github.workspace }}" --skill error-notebook --agent codex claude-code cursor --global --yes --copy
           node -e "const {spawnSync}=require('node:child_process');const os=require('node:os');const path=require('node:path');const script=path.join(os.homedir(),'.agents','skills','error-notebook','scripts','search-notebook.mjs');const result=spawnSync(process.execPath,[script,'npx skills'],{stdio:'inherit',env:process.env});process.exit(result.status??1)"
-          node -e "const fs=require('node:fs');if(!fs.existsSync(process.env.CODEX_ERROR_NOTEBOOK_PATH)){console.error('Private notebook was not initialized');process.exit(1)}"
+          node -e "const fs=require('node:fs');if(!fs.existsSync(process.env.ERROR_NOTEBOOK_PATH)){console.error('Private notebook was not initialized');process.exit(1)}"
       - name: Verify cross-platform installer
         run: >-
           node error-notebook/scripts/install-skill.mjs
-          --install-path "${{ runner.temp }}/codex/skills/error-notebook"
-          --backup-root "${{ runner.temp }}/codex/skill-backups"
-          --private-notebook "${{ runner.temp }}/codex/error-notebook-data/error-notebook.md"
+          --install-path "${{ runner.temp }}/agent-skills/skills/error-notebook"
+          --backup-root "${{ runner.temp }}/agent-skills/skill-backups"
+          --private-notebook "${{ runner.temp }}/link-data/error-notebook.md"
       - name: Verify installer idempotency
         run: >-
           node error-notebook/scripts/install-skill.mjs
-          --install-path "${{ runner.temp }}/codex/skills/error-notebook"
-          --backup-root "${{ runner.temp }}/codex/skill-backups"
-          --private-notebook "${{ runner.temp }}/codex/error-notebook-data/error-notebook.md"
+          --install-path "${{ runner.temp }}/agent-skills/skills/error-notebook"
+          --backup-root "${{ runner.temp }}/agent-skills/skill-backups"
+          --private-notebook "${{ runner.temp }}/link-data/error-notebook.md"

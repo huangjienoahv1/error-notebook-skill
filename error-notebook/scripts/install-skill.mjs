@@ -7,10 +7,13 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { privateNotebookPath } from "./notebook-paths.mjs";
+
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultSourceSkill = path.resolve(scriptDirectory, "..");
-const defaultCodexHome = path.join(os.homedir(), ".codex");
+const defaultSharedSkillsHome = path.join(os.homedir(), ".agents");
+const legacyCodexHome = path.join(os.homedir(), ".codex");
 
 /** 输出命令行使用说明。 */
 function printHelp() {
@@ -18,23 +21,31 @@ function printHelp() {
 
 选项：
   --source-skill <路径>      Skill 源目录，默认使用当前脚本的上级目录
-  --install-path <路径>      安装位置，默认 ~/.codex/skills/error-notebook
-  --backup-root <路径>       旧目录备份位置，默认 ~/.codex/skill-backups
-  --private-notebook <路径>  私有错题本位置，默认 ~/.codex/error-notebook-data/error-notebook.md
+  --install-path <路径>      安装位置，默认 ~/.agents/skills/error-notebook
+  --backup-root <路径>       旧目录备份位置，默认使用安装目录所属配置根目录
+  --private-notebook <路径>  私有错题本位置，默认 ~/.error-notebook/error-notebook.md
   --help                     显示帮助`);
+}
+
+/** 新安装使用通用目录；检测到旧 Codex 安装时继续沿用，避免产生重复 Skill。 */
+function defaultInstallPath() {
+  const legacyInstallPath = path.join(
+    legacyCodexHome,
+    "skills",
+    "error-notebook",
+  );
+  return pathEntryExists(legacyInstallPath)
+    ? legacyInstallPath
+    : path.join(defaultSharedSkillsHome, "skills", "error-notebook");
 }
 
 /** 解析安装器参数，并保留稳定的跨平台默认路径。 */
 function parseArguments(argv) {
   const options = {
     sourceSkill: defaultSourceSkill,
-    installPath: path.join(defaultCodexHome, "skills", "error-notebook"),
-    backupRoot: path.join(defaultCodexHome, "skill-backups"),
-    privateNotebook: path.join(
-      defaultCodexHome,
-      "error-notebook-data",
-      "error-notebook.md",
-    ),
+    installPath: undefined,
+    backupRoot: undefined,
+    privateNotebook: undefined,
   };
   const optionNames = new Map([
     ["--source-skill", "sourceSkill"],
@@ -60,6 +71,12 @@ function parseArguments(argv) {
     options[optionName] = value;
     index += 1;
   }
+  options.installPath ??= defaultInstallPath();
+  options.backupRoot ??= path.join(
+    path.dirname(path.dirname(options.installPath)),
+    "skill-backups",
+  );
+  options.privateNotebook ??= privateNotebookPath();
   return options;
 }
 

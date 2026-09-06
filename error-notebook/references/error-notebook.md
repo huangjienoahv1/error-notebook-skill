@@ -5,7 +5,7 @@
 - 本文件是公开仓库随附的空白模板，不保存个人错题数据。
 - 首次检索、校验或复核时，会在用户目录自动初始化私有错题本；也可以单独运行 `node scripts/init-private-notebook.mjs`。
 - 检索、校验和复核脚本默认只使用私有错题本，不把真实经验写回本模板。
-- 可以通过环境变量 `CODEX_ERROR_NOTEBOOK_PATH` 指定其他私有数据路径。
+- 可以通过环境变量 `ERROR_NOTEBOOK_PATH` 指定其他私有数据路径；旧版 `CODEX_ERROR_NOTEBOOK_PATH` 仍然兼容。
 
 ## 记录规范
 

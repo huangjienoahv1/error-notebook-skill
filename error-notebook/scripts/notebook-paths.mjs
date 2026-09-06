@@ -17,11 +17,17 @@ export const bundledNotebook = path.join(
 );
 export const defaultPrivateNotebook = path.join(
   os.homedir(),
+  ".error-notebook",
+  "error-notebook.md",
+);
+export const legacyPrivateNotebook = path.join(
+  os.homedir(),
   ".codex",
   "error-notebook-data",
   "error-notebook.md",
 );
-export const notebookPathEnvironmentVariable = "CODEX_ERROR_NOTEBOOK_PATH";
+export const notebookPathEnvironmentVariable = "ERROR_NOTEBOOK_PATH";
+export const legacyNotebookPathEnvironmentVariable = "CODEX_ERROR_NOTEBOOK_PATH";
 
 /** 展开当前用户主目录缩写，其他路径保持原值。 */
 function expandHome(pathname) {
@@ -36,9 +42,16 @@ function expandHome(pathname) {
 
 /** 返回环境变量覆盖后的本机私有错题本路径。 */
 export function privateNotebookPath(environment = process.env) {
-  const configuredPath = environment[notebookPathEnvironmentVariable];
-  return configuredPath
-    ? path.resolve(expandHome(configuredPath))
+  const configuredPath = environment[notebookPathEnvironmentVariable]
+    || environment[legacyNotebookPathEnvironmentVariable];
+  if (configuredPath) {
+    return path.resolve(expandHome(configuredPath));
+  }
+  if (fs.existsSync(defaultPrivateNotebook)) {
+    return defaultPrivateNotebook;
+  }
+  return fs.existsSync(legacyPrivateNotebook)
+    ? legacyPrivateNotebook
     : defaultPrivateNotebook;
 }
 

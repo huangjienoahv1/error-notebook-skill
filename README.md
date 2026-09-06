@@ -1,6 +1,6 @@
-# 错误经验错题本 Skill
+# 错误经验错题本 Agent Skill
 
-把已验证的跨项目错误经验做成可检索、可维护的 Codex Skill。它会在技术任务开始时按需查找历史经验，在发生失败或用户纠正后用准确错误再次检索，并且只在根因已确认、解决方式已验证时沉淀新经验。
+把已验证的跨项目错误经验做成可检索、可维护的通用 Agent Skill。它会在技术任务开始时按需查找历史经验，在发生失败或用户纠正后用准确错误再次检索，并且只在根因已确认、解决方式已验证时沉淀新经验。
 
 ## 目录
 
@@ -26,13 +26,19 @@ Skill 自身运行需要 Node.js 18 或更高版本，不依赖 Python、PowerSh
 
 ## 普通用户安装
 
-Node.js 24 或更高版本环境中，一条命令全局安装到 Codex：
+Node.js 24 或更高版本环境中，一条命令全局安装，Skills CLI 会自动识别当前支持的 Agent：
 
 ```shell
-npx skills add huangjienoahv1/error-notebook-skill --skill error-notebook --agent codex --global --yes
+npx skills add huangjienoahv1/error-notebook-skill --skill error-notebook --global --yes
 ```
 
-当前 Skills CLI 会把Skill安装到 `~/.agents/skills/error-notebook`。安装后重新打开 Codex；第一次检索、校验或复核时，会自动在 `~/.codex/error-notebook-data/error-notebook.md` 创建私有错题本。公开仓库中的模板始终保持为空，已有私有文件绝不会被覆盖。
+需要明确安装到多个 Agent 时，可以按需列出目标，例如：
+
+```shell
+npx skills add huangjienoahv1/error-notebook-skill --skill error-notebook --agent codex claude-code cursor --global --yes
+```
+
+当前 Skills CLI 会把通用Skill安装到 `~/.agents/skills/error-notebook`，并为选中的 Agent 配置对应入口。安装后重新打开正在使用的 Agent；第一次检索、校验或复核时，会自动在 `~/.error-notebook/error-notebook.md` 创建私有错题本。公开仓库中的模板始终保持为空，已有私有文件绝不会被覆盖。
 
 ## 开发者链接安装
 
@@ -49,23 +55,24 @@ cd error-notebook-skill
 node ./error-notebook/scripts/install-skill.mjs
 ```
 
-安装器在 Windows 创建 Junction，在 Linux 和 macOS 创建目录符号链接。如果全局目录已经存在，脚本会先把它移动到 `~/.codex/skill-backups` 下的时间戳备份，再创建并验证目录链接；创建失败时会尝试恢复原目录，不会直接删除既有内容。私有错题本已存在时不会覆盖。
+安装器默认把源码链接安装到通用目录 `~/.agents/skills/error-notebook`：Windows 创建 Junction，Linux 和 macOS 创建目录符号链接。如果检测到旧版 `~/.codex/skills/error-notebook` 已经存在，会继续沿用旧位置，避免产生重复Skill。已有目录会先移动到同一配置根目录的 `skill-backups` 下保存，创建失败时尝试恢复，不会直接删除既有内容。私有错题本已存在时不会覆盖。
 
 开发者更新仓库后，目录链接会立即使用新代码；普通用户可以运行 `npx skills update -g error-notebook` 更新已安装副本。
 
-安装后：
+新安装完成后：
 
-- `~/.codex/skills/error-notebook` 指向仓库内的 Skill 代码；
-- 真实错题保存在 `~/.codex/error-notebook-data/error-notebook.md`；
-- 可以用 `CODEX_ERROR_NOTEBOOK_PATH` 改为其他私有位置。
+- `~/.agents/skills/error-notebook` 指向仓库内的 Skill 代码；
+- 真实错题保存在 `~/.error-notebook/error-notebook.md`；
+- 可以用 `ERROR_NOTEBOOK_PATH` 改为其他私有位置；
+- 已有旧版 Codex Skill 和私有错题路径会继续使用，不迁移、不覆盖。
 
-重新打开任务后，可直接说：
+重新打开 Agent 后，可以要求它：
 
 ```text
-使用 $error-notebook 检索这个 Maven 构建错误，并在确认根因和验证修复后记录经验。
+使用 error-notebook 检索这个 Maven 构建错误，并在确认根因和验证修复后记录经验。
 ```
 
-Skill 默认允许自动发现；涉及修改项目、全局规则或远端仓库的动作仍需遵循当前任务授权。
+Skill遵循开放Agent Skills目录结构并允许自动发现；涉及修改项目、全局规则或远端仓库的动作仍需遵循当前任务授权。
 
 ## 更新与 GitHub 同步
 
