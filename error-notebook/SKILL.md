@@ -7,12 +7,12 @@ description: Search, revalidate, and maintain a lifecycle-managed cross-project 
 
 用这份 Skill 复用已经验证的失败经验，避免同类问题反复试错。公开仓库只提供 [空白模板](references/error-notebook.md)；个人错题默认保存在 `~/.codex/error-notebook-data/error-notebook.md`，也可以通过 `CODEX_ERROR_NOTEBOOK_PATH` 指定其他私有路径。
 
-首次安装时运行 `python scripts/init_private_notebook.py`。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。检索、校验和复核脚本会优先使用私有文件；尚未初始化时才读取公开模板。
+运行脚本需要 Node.js 18 或更高版本，不需要安装第三方 npm 依赖。首次安装时运行 `node scripts/init-private-notebook.mjs`。初始化只在私有文件不存在时复制空白模板，绝不覆盖已有数据。检索、校验和复核脚本会优先使用私有文件；尚未初始化时才读取公开模板。
 
 ## 开始任务时检索
 
 1. 从当前任务提取 2～6 个有区分度的关键词，优先包括技术栈、操作系统、工具名、错误码、异常类型或原始错误短语。
-2. 运行 `python scripts/search_notebook.py "关键词1" "准确错误短语"`。路径以本 Skill 目录为基准；如果当前环境只能从别处执行，传入 `--notebook` 指定文件。
+2. 运行 `node scripts/search-notebook.mjs "关键词1" "准确错误短语"`。路径以本 Skill 目录为基准；如果当前环境只能从别处执行，传入 `--notebook` 指定文件。
 3. 只使用输出中的使用规则、分类索引和匹配经验。没有匹配项时继续任务，不为满足形式要求读取无关内容。
 4. 只有无法判断分类、关键词检索不足，或正在整理、去重错题本时，才读取全文。
 5. 检索结果标记为“待复核”“已到期”“已失效”或“已替代”时，只把它当作调查线索；先在当前环境重新验证，再决定是否采用并更新状态。
@@ -44,7 +44,7 @@ description: Search, revalidate, and maintain a lifecycle-managed cross-project 
 
 同一触发条件和同一根因优先更新原条目；同一表象但根因不同，可在对应分类下新增区分明确的标题。不要重排或重写无关内容。
 
-写入前确认脚本解析到的是私有数据文件；如果当前仍在使用仓库内的公开模板，先运行 `python scripts/init_private_notebook.py`，禁止把个人错题直接写入或提交到公开仓库。
+写入前确认脚本解析到的是私有数据文件；如果当前仍在使用仓库内的公开模板，先运行 `node scripts/init-private-notebook.mjs`，禁止把个人错题直接写入或提交到公开仓库。
 
 每条经验使用以下结构：
 
@@ -79,13 +79,13 @@ description: Search, revalidate, and maintain a lifecycle-managed cross-project 
 更新后运行：
 
 ```text
-python scripts/validate_notebook.py
+node scripts/validate-notebook.mjs
 ```
 
 每月至少运行一次到期扫描；只复核到期条目，不机械重验全文：
 
 ```text
-python scripts/review_notebook.py
+node scripts/review-notebook.mjs
 ```
 
 需要把到期或待复核条目作为自动化检查失败处理时，增加 `--fail-on-action`。扫描只报告状态，不会自动修改或删除条目。
@@ -98,7 +98,7 @@ python scripts/review_notebook.py
 
 - 更新个人错题后，验证私有文件已经保存，但不要把它复制、暂存或推送到公开仓库。
 - Git 仓库只提交 `SKILL.md`、脚本、公开空白模板和不含个人数据的说明。
-- 提交前运行 `python scripts/validate_public_repo.py`，确认公开模板仍为空且已跟踪文件未出现高风险凭据或个人绝对路径。
+- 提交前运行 `node scripts/validate-public-repo.mjs`，确认公开模板仍为空且已跟踪文件未出现高风险凭据或个人绝对路径。
 - 只有用户明确要求提交或推送时，才执行对应 Git 操作；私有错题更新与 GitHub 同步相互独立。
 - Junction 安装脚本生成的时间戳备份仅用于迁移回滚，不是后续维护入口。
 

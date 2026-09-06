@@ -5,20 +5,24 @@
 ## 目录
 
 ```text
+package.json
 error-notebook/
 ├─ SKILL.md
 ├─ agents/openai.yaml
 ├─ references/error-notebook.md      # 公开空白模板
 └─ scripts/
-   ├─ init_private_notebook.py
+   ├─ init-private-notebook.mjs
    ├─ install_windows_junction.ps1
-   ├─ notebook_lifecycle.py
-   ├─ notebook_paths.py
-   ├─ review_notebook.py
-   ├─ search_notebook.py
-   ├─ validate_public_repo.py
-   └─ validate_notebook.py
+   ├─ notebook-lifecycle.mjs
+   ├─ notebook-parser.mjs
+   ├─ notebook-paths.mjs
+   ├─ review-notebook.mjs
+   ├─ search-notebook.mjs
+   ├─ validate-public-repo.mjs
+   └─ validate-notebook.mjs
 ```
+
+运行脚本需要 Node.js 18 或更高版本，不需要安装第三方 npm 依赖。Windows Junction 安装入口仍使用 PowerShell 7。
 
 ## 安装到 Codex
 
@@ -62,11 +66,11 @@ Skill 默认允许自动发现；涉及修改项目、全局规则或远端仓�
 ## 独立检索与校验
 
 ```powershell
-python .\error-notebook\scripts\init_private_notebook.py
-python .\error-notebook\scripts\search_notebook.py 'PowerShell' 'Missing closing'
-python .\error-notebook\scripts\validate_notebook.py
-python .\error-notebook\scripts\review_notebook.py
-python .\error-notebook\scripts\validate_public_repo.py
+node .\error-notebook\scripts\init-private-notebook.mjs
+node .\error-notebook\scripts\search-notebook.mjs 'PowerShell' 'Missing closing'
+node .\error-notebook\scripts\validate-notebook.mjs
+node .\error-notebook\scripts\review-notebook.mjs
+node .\error-notebook\scripts\validate-public-repo.mjs
 ```
 
 检索、错题校验和复核脚本默认优先使用私有数据文件。检索结果如果命中待复核、已到期、已失效或已替代条目，会明确提示只能作为调查线索。公开仓库校验要求随仓库提供的模板不含任何真实条目，并扫描已跟踪文件中的高风险凭据、个人绝对路径和内网地址。
@@ -74,7 +78,7 @@ python .\error-notebook\scripts\validate_public_repo.py
 复核扫描脚本只报告待复核和已经超过复核日期的条目，不会自动修改或删除内容。建议每月运行一次：
 
 ```powershell
-python .\error-notebook\scripts\review_notebook.py --max-results 30
+node .\error-notebook\scripts\review-notebook.mjs --max-results 30
 ```
 
 在 CI 或计划任务中需要用退出码识别待处理项时，可以增加 `--fail-on-action`。

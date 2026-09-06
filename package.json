@@ -1,0 +1,19 @@
+{
+  "name": "error-notebook-skill",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lifecycle-managed Codex error notebook skill with private local data separation",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "init:notebook": "node ./error-notebook/scripts/init-private-notebook.mjs",
+    "search": "node ./error-notebook/scripts/search-notebook.mjs",
+    "validate:notebook": "node ./error-notebook/scripts/validate-notebook.mjs",
+    "validate:template": "node ./error-notebook/scripts/validate-notebook.mjs --notebook ./error-notebook/references/error-notebook.md",
+    "review": "node ./error-notebook/scripts/review-notebook.mjs",
+    "validate:public": "node ./error-notebook/scripts/validate-public-repo.mjs",
+    "check": "npm run validate:template && npm run validate:public"
+  }
+}

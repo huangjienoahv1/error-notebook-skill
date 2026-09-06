@@ -13,13 +13,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: "20"
       - name: Validate bundled notebook template
         run: >-
-          python error-notebook/scripts/validate_notebook.py
+          node error-notebook/scripts/validate-notebook.mjs
           --notebook error-notebook/references/error-notebook.md
       - name: Check public repository privacy boundary
-        run: python error-notebook/scripts/validate_public_repo.py
+        run: node error-notebook/scripts/validate-public-repo.mjs

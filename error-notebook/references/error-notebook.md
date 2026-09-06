@@ -3,7 +3,7 @@
 ## 使用方式
 
 - 本文件是公开仓库随附的空白模板，不保存个人错题数据。
-- 安装后运行 `python scripts/init_private_notebook.py`，在用户目录初始化私有错题本。
+- 安装后运行 `node scripts/init-private-notebook.mjs`，在用户目录初始化私有错题本。
 - 检索、校验和复核脚本默认优先使用私有错题本；没有私有文件时才读取本模板。
 - 可以通过环境变量 `CODEX_ERROR_NOTEBOOK_PATH` 指定其他私有数据路径。
 
