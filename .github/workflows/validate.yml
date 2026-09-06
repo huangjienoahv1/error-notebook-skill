@@ -1,0 +1,25 @@
+name: Validate public skill
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate bundled notebook template
+        run: >-
+          python error-notebook/scripts/validate_notebook.py
+          --notebook error-notebook/references/error-notebook.md
+      - name: Check public repository privacy boundary
+        run: python error-notebook/scripts/validate_public_repo.py

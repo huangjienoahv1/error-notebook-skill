@@ -1,0 +1,4 @@
+interface:
+  display_name: "错误经验错题本"
+  short_description: "检索并维护已验证的跨项目错误经验，定位根因并避免重复踩坑"
+  default_prompt: "使用 $error-notebook 检索当前任务相关经验，并在确认根因和验证修复后更新错题本。"
