@@ -13,7 +13,8 @@ import { activeNotebookPath } from "./notebook-paths.mjs";
 function parseArguments(argumentsList) {
   const terms = [];
   let notebook;
-  let maxResults = 8;
+  let maxResults;
+  let verbose = false;
 
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
@@ -29,6 +30,8 @@ function parseArguments(argumentsList) {
         throw new Error("--max-results 缺少数量。");
       }
       maxResults = Number(argumentsList[index]);
+    } else if (argument === "--verbose") {
+      verbose = true;
     } else if (argument.startsWith("--")) {
       throw new Error(`未知参数：${argument}`);
     } else {
@@ -39,11 +42,15 @@ function parseArguments(argumentsList) {
   if (terms.length === 0) {
     throw new Error("至少需要一个字面量检索词。");
   }
-  if (!Number.isInteger(maxResults) || maxResults < 1) {
+  if (
+    maxResults !== undefined
+    && (!Number.isInteger(maxResults) || maxResults < 1)
+  ) {
     throw new Error("--max-results 必须是大于 0 的整数。");
   }
   notebook ??= activeNotebookPath();
-  return { terms, notebook, maxResults };
+  maxResults ??= verbose ? 8 : 3;
+  return { terms, notebook, maxResults, verbose };
 }
 
 /** 计算一个字面量在文本中的非重叠出现次数。 */
@@ -65,6 +72,7 @@ function occurrenceCount(text, term) {
 function scoreEntry(entry, terms) {
   const haystack = `${entry.category}\n${entry.title}\n${entry.text}`.toLowerCase();
   let score = 0;
+  let matchedTermCount = 0;
   for (const term of terms) {
     const normalizedTerm = term.toLowerCase().trim();
     if (!normalizedTerm) {
@@ -72,10 +80,11 @@ function scoreEntry(entry, terms) {
     }
     const count = occurrenceCount(haystack, normalizedTerm);
     if (count > 0) {
+      matchedTermCount += 1;
       score += 1000 + Math.min(count, 10) + Math.min(normalizedTerm.length, 100);
     }
   }
-  return score;
+  return { matchedTermCount, score };
 }
 
 /** 读取错题本并输出受限的相关上下文。 */
@@ -102,36 +111,46 @@ function main() {
     return 2;
   }
   const { sections, categories, entries } = parseNotebook(text);
-  const ranked = entries
-    .map((entry, index) => ({
-      entry,
-      index,
-      score: scoreEntry(entry, options.terms),
-    }))
+  const rankedCandidates = entries
+    .map((entry, index) => {
+      const relevance = scoreEntry(entry, options.terms);
+      return { entry, index, ...relevance };
+    })
     .filter(({ score }) => score > 0)
-    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+  const highestMatchedTermCount = rankedCandidates[0]?.matchedTermCount ?? 0;
+  const ranked = rankedCandidates
+    // 紧凑模式排除只命中泛词的低相关候选；详细模式保留原有广泛结果。
+    .filter(({ matchedTermCount }) => (
+      options.verbose || matchedTermCount === highestMatchedTermCount
+    ))
     .slice(0, options.maxResults);
 
-  console.log("# 错题本检索上下文");
-  for (const sectionName of specialSections) {
-    const section = sections.get(sectionName);
-    if (section) {
-      console.log();
-      console.log(section.join("\n").trimEnd());
+  if (options.verbose) {
+    console.log("# 错题本检索上下文");
+    for (const sectionName of specialSections) {
+      const section = sections.get(sectionName);
+      if (section) {
+        console.log();
+        console.log(section.join("\n").trimEnd());
+      }
     }
+
+    console.log("\n## 分类索引\n");
+    for (const category of categories) {
+      console.log(`- ${category}`);
+    }
+    console.log("\n## 匹配经验\n");
   }
 
-  console.log("\n## 分类索引\n");
-  for (const category of categories) {
-    console.log(`- ${category}`);
-  }
-
-  console.log("\n## 匹配经验\n");
   if (ranked.length === 0) {
     console.log("未检索到直接相关经验；继续当前任务，不读取无关条目。");
     return 0;
   }
 
+  if (!options.verbose) {
+    console.log("# 错题本匹配经验\n");
+  }
   for (const { entry } of ranked) {
     console.log(`<!-- 分类：${entry.category} -->`);
     const currentLifecycle = lifecycleLabel(entry.lines);
