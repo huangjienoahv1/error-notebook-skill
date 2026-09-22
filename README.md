@@ -9,7 +9,10 @@ package.json
 error-notebook/
 ├─ SKILL.md
 ├─ agents/openai.yaml
-├─ references/error-notebook.md      # 公开空白模板
+├─ references/
+│  ├─ error-notebook.md              # 公开空白模板
+│  ├─ recording.md                   # 按需读取的记录格式与生命周期
+│  └─ maintenance.md                 # 按需读取的安装与数据路径说明
 └─ scripts/
    ├─ install-skill.mjs
    ├─ init-private-notebook.mjs
@@ -74,6 +77,8 @@ node ./error-notebook/scripts/install-skill.mjs
 
 Skill遵循开放Agent Skills目录结构并允许自动发现；涉及修改项目、全局规则或远端仓库的动作仍需遵循当前任务授权。
 
+入口采用渐进加载：日常任务只需读取 `SKILL.md` 并检索相关经验；新增或复核条目时读取 `references/recording.md`，安装、迁移或定位数据路径时读取 `references/maintenance.md`。周期扫描按需执行，不会自动创建定时任务。
+
 ## 更新与 GitHub 同步
 
 - 本地经验满足写入门槛后，只更新仓库外的私有错题本。
@@ -94,6 +99,12 @@ node ./error-notebook/scripts/validate-public-repo.mjs
 
 检索、错题校验和复核脚本默认使用私有数据文件；文件尚不存在时会从公开空白模板安全初始化。检索默认采用紧凑输出：无匹配时只返回简短提示，命中时只输出命中关键词数量最高的相关经验和必要生命周期提示，默认最多 3 条，避免泛词候选及固定说明重复占用 Agent 上下文。只有需要扩大候选范围、查看使用规则或完整分类索引时才增加 `--verbose`，详细模式默认最多 8 条；两种模式均可用 `--max-results` 调整数量。检索结果如果命中待复核、已到期、已失效或已替代条目，会明确提示只能作为调查线索。公开仓库校验要求随仓库提供的模板不含任何真实条目，并扫描已跟踪文件中的高风险凭据、个人绝对路径和内网地址。
 
+检索词忽略大小写和首尾空白，重复词只计分一次；全部为空白时返回参数错误，不会误报为无匹配。检索以 `--` 开头的命令参数或错误片段时，把脚本选项放在分隔符前，字面量放在后面：
+
+```shell
+node ./error-notebook/scripts/search-notebook.mjs --max-results 3 -- "--ignore-scripts"
+```
+
 复核扫描脚本只报告待复核和已经超过复核日期的条目，不会自动修改或删除内容。建议每月运行一次：
 
 ```shell
@@ -104,11 +115,13 @@ node ./error-notebook/scripts/review-notebook.mjs --max-results 30
 
 ## 生命周期与复核周期
 
+下列周期是本错题本的数据约定，不是 Agent Skills 格式要求；完整字段规则见 [记录格式与生命周期](error-notebook/references/recording.md)。
+
 - 工具、API、框架和云服务：90 天。
 - 操作系统、构建和部署环境：180 天。
 - Git、安全边界和稳定操作原则：365 天。
 - 每次实际命中某条经验时，无论是否到期，都优先在当前环境复核。
-- 到期只表示需要重新确认，不表示原经验必然错误；验证失败后标记为 `已失效` 或 `已替代`，保留历史关系。
+- 到期只表示需要重新确认，不表示原经验必然错误；权限、网络限制或环境不匹配也不能作为失效依据。只有证据证明原适用范围内的处理方式不再成立，才标记为 `已失效`；有已验证的替代条目时标记为 `已替代`，保留历史关系。
 - 已失效或已替代条目不再安排周期复核，但必须保留确认日期和证据。
 - 迁移前没有可靠日期和证据的旧条目统一标记为 `待复核`，首次命中时再补充真实日期、周期和证据。
 

@@ -11,14 +11,17 @@ import { activeNotebookPath } from "./notebook-paths.mjs";
 
 /** 解析检索参数。 */
 function parseArguments(argumentsList) {
-  const terms = [];
+  const rawTerms = [];
   let notebook;
   let maxResults;
   let verbose = false;
 
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
-    if (argument === "--notebook") {
+    if (argument === "--") {
+      rawTerms.push(...argumentsList.slice(index + 1));
+      break;
+    } else if (argument === "--notebook") {
       index += 1;
       if (index >= argumentsList.length) {
         throw new Error("--notebook 缺少路径。");
@@ -35,12 +38,15 @@ function parseArguments(argumentsList) {
     } else if (argument.startsWith("--")) {
       throw new Error(`未知参数：${argument}`);
     } else {
-      terms.push(argument);
+      rawTerms.push(argument);
     }
   }
 
+  // 统一大小写和首尾空白，并去重，避免重复词改变相关度及紧凑模式候选。
+  const terms = [...new Set(rawTerms.map((term) => term.trim().toLowerCase()))]
+    .filter(Boolean);
   if (terms.length === 0) {
-    throw new Error("至少需要一个字面量检索词。");
+    throw new Error("至少需要一个非空的字面量检索词。");
   }
   if (
     maxResults !== undefined
@@ -74,14 +80,10 @@ function scoreEntry(entry, terms) {
   let score = 0;
   let matchedTermCount = 0;
   for (const term of terms) {
-    const normalizedTerm = term.toLowerCase().trim();
-    if (!normalizedTerm) {
-      continue;
-    }
-    const count = occurrenceCount(haystack, normalizedTerm);
+    const count = occurrenceCount(haystack, term);
     if (count > 0) {
       matchedTermCount += 1;
-      score += 1000 + Math.min(count, 10) + Math.min(normalizedTerm.length, 100);
+      score += 1000 + Math.min(count, 10) + Math.min(term.length, 100);
     }
   }
   return { matchedTermCount, score };

@@ -61,6 +61,50 @@ function findDuplicates(values) {
   return [...new Set(values.filter((value) => counts.get(value) > 1))];
 }
 
+/** 查找条目替代关系中的循环，并返回包含闭环终点的路径。 */
+export function findSupersessionCycles(entries) {
+  const targets = new Map();
+  for (const entry of entries) {
+    const values = extractLifecycle(entry.lines);
+    const qualifiedTitle = `${entry.category} / ${entry.title}`;
+    if (
+      values.status === "已替代"
+      && values.supersededBy !== "无"
+      && values.supersededBy !== qualifiedTitle
+    ) {
+      targets.set(qualifiedTitle, values.supersededBy);
+    }
+  }
+
+  const states = new Map();
+  const stack = [];
+  const cycles = [];
+  const visit = (qualifiedTitle) => {
+    if (states.get(qualifiedTitle) === "visiting") {
+      const cycleStart = stack.indexOf(qualifiedTitle);
+      cycles.push([...stack.slice(cycleStart), qualifiedTitle]);
+      return;
+    }
+    if (states.get(qualifiedTitle) === "visited") {
+      return;
+    }
+
+    states.set(qualifiedTitle, "visiting");
+    stack.push(qualifiedTitle);
+    const target = targets.get(qualifiedTitle);
+    if (target && targets.has(target)) {
+      visit(target);
+    }
+    stack.pop();
+    states.set(qualifiedTitle, "visited");
+  };
+
+  for (const qualifiedTitle of targets.keys()) {
+    visit(qualifiedTitle);
+  }
+  return cycles;
+}
+
 /** 校验一条经验的生命周期字段和值域。 */
 export function validateLifecycle(category, title, lines, knownEntries) {
   const qualifiedTitle = `${category} / ${title}`;
@@ -82,6 +126,8 @@ export function validateLifecycle(category, title, lines, knownEntries) {
   }
   if (!values.supersededBy) {
     errors.push(`${qualifiedTitle} 的替代条目不能为空；没有替代项时填写“无”。`);
+  } else if (status !== "已替代" && values.supersededBy !== "无") {
+    errors.push(`${qualifiedTitle} 不是已替代状态，替代条目应填写“无”。`);
   }
 
   if (status === "待复核") {
@@ -128,6 +174,8 @@ export function validateLifecycle(category, title, lines, knownEntries) {
     if (status === "已替代") {
       if (values.supersededBy === "无") {
         errors.push(`${qualifiedTitle} 已替代，但没有填写替代条目。`);
+      } else if (values.supersededBy === qualifiedTitle) {
+        errors.push(`${qualifiedTitle} 的替代条目不能指向自身。`);
       } else if (!knownEntries.has(values.supersededBy)) {
         errors.push(
           `${qualifiedTitle} 的替代条目不存在：${values.supersededBy}；请使用“分类 / 标题”。`,
@@ -163,9 +211,6 @@ export function validateLifecycle(category, title, lines, knownEntries) {
   if (values.evidence === migratedPendingValues.evidence) {
     errors.push(`${qualifiedTitle} 不是待复核状态，必须填写真实验证证据。`);
   }
-  if (values.supersededBy !== "无") {
-    errors.push(`${qualifiedTitle} 仍为有效状态，替代条目应填写“无”。`);
-  }
   return errors;
 }
 
@@ -197,7 +242,15 @@ function main() {
     return 1;
   }
 
-  const { sections, categories, entries } = parseNotebook(text);
+  const {
+    sections,
+    categories,
+    entries,
+    hasUnclosedFence,
+  } = parseNotebook(text);
+  if (hasUnclosedFence) {
+    errors.push("存在未闭合的 Markdown 围栏代码块。");
+  }
   for (const requiredSection of specialSections) {
     if (!sections.has(requiredSection)) {
       errors.push(`缺少二级章节：${requiredSection}`);
@@ -230,6 +283,9 @@ function main() {
       entry.lines,
       knownEntries,
     ));
+  }
+  for (const cycle of findSupersessionCycles(entries)) {
+    errors.push(`替代关系形成循环：${cycle.join(" -> ")}。`);
   }
 
   if (text.includes("[TODO") || text.includes("[PLACEHOLDER")) {
