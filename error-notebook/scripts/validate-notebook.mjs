@@ -7,15 +7,12 @@ import { pathToFileURL } from "node:url";
 
 import {
   extractLifecycle,
-  inactiveValue,
   lifecycleFields,
   migratedPendingValues,
-  parseIsoDate,
-  reviewPeriodDays,
-  todayDate,
+  validateLifecycleDates,
   validStatuses,
 } from "./notebook-lifecycle.mjs";
-import { parseNotebook, specialSections } from "./notebook-parser.mjs";
+import { parseNotebook, scanMarkdownLines, specialSections } from "./notebook-parser.mjs";
 import { activeNotebookPath } from "./notebook-paths.mjs";
 
 
@@ -32,7 +29,6 @@ const secretPatterns = new Map([
   ["OpenAI API Key", /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/u],
   ["AWS Access Key", /\bAKIA[0-9A-Z]{16}\b/u],
 ]);
-const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 /** 解析校验命令行参数。 */
 function parseArguments(argumentsList) {
@@ -130,44 +126,14 @@ export function validateLifecycle(category, title, lines, knownEntries) {
     errors.push(`${qualifiedTitle} 不是已替代状态，替代条目应填写“无”。`);
   }
 
+  errors.push(...validateLifecycleDates(values).map(
+    (error) => `${qualifiedTitle} 的${error}`,
+  ));
   if (status === "待复核") {
-    if (
-      !reviewPeriodDays.has(values.reviewPeriod)
-      && values.reviewPeriod !== migratedPendingValues.reviewPeriod
-    ) {
-      errors.push(`${qualifiedTitle} 的待复核周期值无效：${values.reviewPeriod}。`);
-    }
-    if (
-      values.lastVerified !== migratedPendingValues.lastVerified
-      && !parseIsoDate(values.lastVerified)
-    ) {
-      errors.push(`${qualifiedTitle} 的最后验证日期无效：${values.lastVerified}。`);
-    }
-    if (
-      values.reviewBy !== migratedPendingValues.reviewBy
-      && !parseIsoDate(values.reviewBy)
-    ) {
-      errors.push(`${qualifiedTitle} 的下次复核日期无效：${values.reviewBy}。`);
-    }
     return errors;
   }
 
-  const lastVerifiedDate = parseIsoDate(values.lastVerified);
-  if (!lastVerifiedDate) {
-    errors.push(
-      `${qualifiedTitle} 的最后验证必须是 YYYY-MM-DD：${values.lastVerified}。`,
-    );
-  } else if (lastVerifiedDate > todayDate()) {
-    errors.push(`${qualifiedTitle} 的最后验证日期不能晚于今天。`);
-  }
-
   if (status === "已失效" || status === "已替代") {
-    if (values.reviewPeriod !== inactiveValue) {
-      errors.push(`${qualifiedTitle} 已停止生效，复核周期应填写“不适用”。`);
-    }
-    if (values.reviewBy !== inactiveValue) {
-      errors.push(`${qualifiedTitle} 已停止生效，下次复核应填写“不适用”。`);
-    }
     if (values.evidence === migratedPendingValues.evidence) {
       errors.push(`${qualifiedTitle} 必须填写确认失效或替代关系的真实证据。`);
     }
@@ -185,29 +151,6 @@ export function validateLifecycle(category, title, lines, knownEntries) {
     return errors;
   }
 
-  if (!reviewPeriodDays.has(values.reviewPeriod)) {
-    errors.push(
-      `${qualifiedTitle} 的复核周期“${values.reviewPeriod}”无效，应为 90天、180天或365天。`,
-    );
-  }
-  const reviewByDate = parseIsoDate(values.reviewBy);
-  if (!reviewByDate) {
-    errors.push(`${qualifiedTitle} 的下次复核必须是 YYYY-MM-DD：${values.reviewBy}。`);
-  }
-  if (lastVerifiedDate && reviewByDate) {
-    const intervalDays = Math.round(
-      (reviewByDate.getTime() - lastVerifiedDate.getTime()) / millisecondsPerDay,
-    );
-    if (intervalDays < 1) {
-      errors.push(`${qualifiedTitle} 的下次复核必须晚于最后验证日期。`);
-    }
-    const periodDays = reviewPeriodDays.get(values.reviewPeriod);
-    if (periodDays && intervalDays > periodDays) {
-      errors.push(
-        `${qualifiedTitle} 的复核间隔为 ${intervalDays} 天，超过 ${periodDays} 天周期。`,
-      );
-    }
-  }
   if (values.evidence === migratedPendingValues.evidence) {
     errors.push(`${qualifiedTitle} 不是待复核状态，必须填写真实验证证据。`);
   }
@@ -269,12 +212,18 @@ function main() {
 
   const knownEntries = new Set(qualifiedTitles);
   for (const entry of entries) {
+    const fieldLines = [...scanMarkdownLines(entry.lines)]
+      .filter(({ isCode }) => !isCode)
+      .map(({ line }) => line);
     for (const prefix of requiredPrefixes) {
-      const count = entry.lines.filter((line) => line.startsWith(prefix)).length;
+      const matches = fieldLines.filter((line) => line.startsWith(prefix));
+      const count = matches.length;
       if (count !== 1) {
         errors.push(
           `${entry.category} / ${entry.title} 中“${prefix}”数量为 ${count}，应为 1。`,
         );
+      } else if (!matches[0].slice(prefix.length).trim()) {
+        errors.push(`${entry.category} / ${entry.title} 中“${prefix}”内容不能为空。`);
       }
     }
     errors.push(...validateLifecycle(

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-/** 扫描待复核和已经超过复核日期的错误经验。 */
+/** 扫描待复核、已经超过复核日期及生命周期字段异常的错误经验。 */
 
 import fs from "node:fs";
 import path from "node:path";
 
 import {
   extractLifecycle,
+  invalidLifecycleLabel,
   lifecycleLabel,
   parseIsoDate,
   todayDate,
@@ -81,7 +82,11 @@ function main() {
     console.error(`错误：错题本不是有效 UTF-8：${error.message}`);
     return 2;
   }
-  const { entries } = parseNotebook(text);
+  const { entries, hasUnclosedFence } = parseNotebook(text);
+  if (hasUnclosedFence) {
+    console.error("错误：存在未闭合的 Markdown 围栏代码块，无法可靠扫描。");
+    return 2;
+  }
   const labels = entries.map((entry) => ({
     entry,
     label: lifecycleLabel(entry.lines, options.asOf),
@@ -91,19 +96,19 @@ function main() {
     counts.set(label, (counts.get(label) ?? 0) + 1);
   }
   const actionable = labels.filter(
-    ({ label }) => label === "待复核" || label === "已到期",
+    ({ label }) => label === "待复核" || label === "已到期" || label === invalidLifecycleLabel,
   );
 
   console.log(`# 错题本复核扫描（截至 ${options.asOf.toISOString().slice(0, 10)}）`);
   console.log();
   console.log(`- 总条目：${entries.length}`);
-  for (const label of ["有效", "待复核", "已到期", "已失效", "已替代"]) {
+  for (const label of ["有效", "待复核", "已到期", "已失效", "已替代", invalidLifecycleLabel]) {
     console.log(`- ${label}：${counts.get(label) ?? 0}`);
   }
 
   console.log("\n## 待处理条目\n");
   if (actionable.length === 0) {
-    console.log("没有待复核或已到期条目。");
+    console.log("没有待复核、已到期或字段异常条目。");
     return 0;
   }
 
@@ -113,6 +118,9 @@ function main() {
       `- [${label}] ${entry.category} / ${entry.title}；`
       + `最后验证：${values.lastVerified}；下次复核：${values.reviewBy}`,
     );
+  }
+  if (counts.has(invalidLifecycleLabel)) {
+    console.log("字段异常条目请使用 validate-notebook.mjs 校验同一数据文件，定位具体原因。");
   }
   const remaining = actionable.length - options.maxResults;
   if (remaining > 0) {

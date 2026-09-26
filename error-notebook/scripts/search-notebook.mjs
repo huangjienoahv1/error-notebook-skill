@@ -112,7 +112,11 @@ function main() {
     console.error(`错误：错题本不是有效 UTF-8：${error.message}`);
     return 2;
   }
-  const { sections, categories, entries } = parseNotebook(text);
+  const { sections, categories, entries, hasUnclosedFence } = parseNotebook(text);
+  if (hasUnclosedFence) {
+    console.error("错误：存在未闭合的 Markdown 围栏代码块，无法可靠检索。");
+    return 2;
+  }
   const rankedCandidates = entries
     .map((entry, index) => {
       const relevance = scoreEntry(entry, options.terms);

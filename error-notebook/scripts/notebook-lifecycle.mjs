@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /** 错误经验条目的生命周期字段与到期判断。 */
 
+import { scanMarkdownLines } from "./notebook-parser.mjs";
+
 export const lifecycleFields = {
   status: "- 状态：",
   reviewPeriod: "- 复核周期：",
@@ -17,6 +19,8 @@ export const reviewPeriodDays = new Map([
   ["365天", 365],
 ]);
 export const inactiveValue = "不适用";
+export const invalidLifecycleLabel = "字段异常";
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
 export const migratedPendingValues = {
   reviewPeriod: "待首次复核时确定",
   lastVerified: "未记录（迁移存量）",
@@ -24,12 +28,15 @@ export const migratedPendingValues = {
   evidence: "待复核后补充",
 };
 
-/** 从条目正文提取生命周期字段，未出现的字段返回空字符串。 */
+/** 从围栏外正文提取生命周期字段，未出现的字段返回空字符串。 */
 export function extractLifecycle(lines) {
   const values = Object.fromEntries(
     Object.keys(lifecycleFields).map((name) => [name, ""]),
   );
-  for (const line of lines) {
+  for (const { line, isCode } of scanMarkdownLines(lines)) {
+    if (isCode) {
+      continue;
+    }
     for (const [name, prefix] of Object.entries(lifecycleFields)) {
       if (line.startsWith(prefix)) {
         values[name] = line.slice(prefix.length).trim();
@@ -70,10 +77,55 @@ export function todayDate(now = new Date()) {
   ));
 }
 
-/** 返回用于检索和复核报告的当前生命周期标签。 */
+/** 统一检查日期与周期；待复核存量允许迁移占位值，真实日期仍受约束。 */
+export function validateLifecycleDates(values) {
+  const errors = [];
+  const pending = values.status === "待复核";
+  const lastVerified = parseIsoDate(values.lastVerified);
+  if (!lastVerified) {
+    if (!pending || values.lastVerified !== migratedPendingValues.lastVerified) {
+      errors.push(`最后验证日期无效：${values.lastVerified}。`);
+    }
+  } else if (lastVerified > todayDate()) {
+    errors.push("最后验证日期不能晚于今天。");
+  }
+
+  if (values.status === "已失效" || values.status === "已替代") {
+    if (values.reviewPeriod !== inactiveValue || values.reviewBy !== inactiveValue) {
+      errors.push("已停止生效，复核周期与下次复核应填写“不适用”。");
+    }
+    return errors;
+  }
+
+  const periodDays = reviewPeriodDays.get(values.reviewPeriod);
+  if (!periodDays && (!pending || values.reviewPeriod !== migratedPendingValues.reviewPeriod)) {
+    errors.push(`复核周期无效：${values.reviewPeriod}。`);
+  }
+  const reviewBy = parseIsoDate(values.reviewBy);
+  if (!reviewBy && (!pending || values.reviewBy !== migratedPendingValues.reviewBy)) {
+    errors.push(`下次复核日期无效：${values.reviewBy}。`);
+  }
+  if (lastVerified && reviewBy) {
+    const intervalDays = Math.round(
+      (reviewBy.getTime() - lastVerified.getTime()) / millisecondsPerDay,
+    );
+    if (intervalDays < 1) {
+      errors.push("下次复核必须晚于最后验证日期。");
+    } else if (periodDays && intervalDays > periodDays) {
+      errors.push(`复核间隔为 ${intervalDays} 天，超过 ${periodDays} 天周期。`);
+    }
+  }
+  return errors;
+}
+
+/** 返回报告标签；状态或日期异常不能被当作有效条目或正常待复核条目。 */
 export function lifecycleLabel(lines, asOf = todayDate()) {
   const values = extractLifecycle(lines);
-  const status = values.status || "待复核";
+  const status = values.status;
+  // --as-of 仅控制到期判断，不能允许未来验证日期通过字段校验。
+  if (!validStatuses.includes(status) || validateLifecycleDates(values).length > 0) {
+    return invalidLifecycleLabel;
+  }
   if (status === "有效") {
     const reviewBy = parseIsoDate(values.reviewBy);
     if (reviewBy && reviewBy < asOf) {

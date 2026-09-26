@@ -16,6 +16,28 @@ function parseFence(line) {
   };
 }
 
+/** 逐行识别围栏区域，供章节解析与字段校验共用；原文保持不变。 */
+export function* scanMarkdownLines(lines) {
+  let activeFence = null;
+  for (const line of lines) {
+    const fence = parseFence(line);
+    const isCode = activeFence !== null || fence !== null;
+    if (activeFence) {
+      if (
+        fence
+        && fence.character === activeFence.character
+        && fence.length >= activeFence.length
+        && fence.trailing.trim() === ""
+      ) {
+        activeFence = null;
+      }
+    } else if (fence) {
+      activeFence = fence;
+    }
+    yield { line, isCode, hasUnclosedFence: activeFence !== null };
+  }
+}
+
 /** 解析二级分类和三级经验条目。 */
 export function parseNotebook(text) {
   const sections = new Map();
@@ -24,7 +46,7 @@ export function parseNotebook(text) {
   let currentSection = null;
   let currentEntryTitle = null;
   let currentEntryLines = [];
-  let activeFence = null;
+  let hasUnclosedFence = false;
 
   const flushEntry = () => {
     if (currentSection && currentEntryTitle) {
@@ -47,23 +69,11 @@ export function parseNotebook(text) {
     }
   };
 
-  for (const line of text.split(/\r?\n/u)) {
-    const fence = parseFence(line);
-    if (activeFence) {
+  for (const scanned of scanMarkdownLines(text.split(/\r?\n/u))) {
+    const { line, isCode } = scanned;
+    hasUnclosedFence = scanned.hasUnclosedFence;
+    if (isCode) {
       appendCurrentLine(line);
-      if (
-        fence
-        && fence.character === activeFence.character
-        && fence.length >= activeFence.length
-        && fence.trailing.trim() === ""
-      ) {
-        activeFence = null;
-      }
-      continue;
-    }
-    if (fence) {
-      appendCurrentLine(line);
-      activeFence = fence;
       continue;
     }
 
@@ -97,6 +107,6 @@ export function parseNotebook(text) {
     sections,
     categories,
     entries,
-    hasUnclosedFence: activeFence !== null,
+    hasUnclosedFence,
   };
 }
